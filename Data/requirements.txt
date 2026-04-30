@@ -1,2 +1,0 @@
-SQLAlchemy~=2.0.48
-python-decouple~=3.8
