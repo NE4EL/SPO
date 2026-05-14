@@ -1,29 +1,25 @@
 import { http } from './client';
 import type { Vehicle } from '../../app/context/AppContext';
 
-// Тип данных как приходит с бэкенда
 export interface VehicleResponse {
   id: number;
   client_id: number;
-  brand: string;        // → make на фронте
+  brand: string;
   model: string;
   year: number;
-  plate_number: string; // → licensePlate на фронте
+  plate_number: string;
   mileage: number;
   created_at: string;
 }
 
-// Клиент (владелец автомобиля)
 export interface ClientResponse {
   id: number;
-  full_name: string;  // → owner на фронте
-  phone: string;      // → ownerPhone на фронте
+  full_name: string;
+  phone: string;
   email: string | null;
   created_at: string;
 }
 
-// Маппинг бэкенд → фронт
-// Требует данных клиента для owner/ownerPhone
 export function mapVehicle(v: VehicleResponse, client?: ClientResponse): Vehicle {
   return {
     id: String(v.id),
@@ -31,34 +27,34 @@ export function mapVehicle(v: VehicleResponse, client?: ClientResponse): Vehicle
     model: v.model,
     year: v.year,
     licensePlate: v.plate_number,
-    vin: '',              // TODO: уточнить у бэкенда поле vin
+    vin: '',
     owner: client?.full_name ?? '',
     ownerPhone: client?.phone ?? '',
-    color: '',            // TODO: уточнить у бэкенда поле color
+    color: '',
     mileage: v.mileage,
-    lastService: '',      // TODO: уточнить у бэкенда поле lastService
-    nextService: '',      // TODO: уточнить у бэкенда поле nextService
-    serviceRecords: [],   // TODO: загружать из истории заказов
+    lastService: '',
+    nextService: '',
+    serviceRecords: [],
   };
 }
 
-// GET    /api/vehicles/      → VehicleResponse[]
-// GET    /api/clients/       → ClientResponse[]  (нужны для owner/ownerPhone)
-// POST   /api/clients/       → ClientResponse    (сначала создаём клиента)
-// POST   /api/vehicles/      → VehicleResponse
-// PUT    /api/vehicles/{id}  → VehicleResponse
-// DELETE /api/vehicles/{id}  → 204
 export const vehiclesApi = {
-  getAll: () =>
-    http.get<VehicleResponse[]>('/api/vehicles/').then(list => list.map(v => mapVehicle(v))),
+  getAll: async (): Promise<Vehicle[]> => {
+    const [vehicles, clients] = await Promise.all([
+      http.get<VehicleResponse[]>('/api/vehicles/'),
+      http.get<ClientResponse[]>('/api/clients/'),
+    ]);
+    const clientMap = new Map(clients.map(c => [c.id, c]));
+    return vehicles.map(v => mapVehicle(v, clientMap.get(v.client_id)));
+  },
 
-  getClients: () =>
+  getClients: (): Promise<ClientResponse[]> =>
     http.get<ClientResponse[]>('/api/clients/'),
 
-  createClient: (data: { full_name: string; phone: string; email?: string }) =>
+  createClient: (data: { full_name: string; phone: string; email?: string }): Promise<ClientResponse> =>
     http.post<ClientResponse>('/api/clients/', data),
 
-  create: (clientId: number, data: Omit<Vehicle, 'id' | 'serviceRecords'>) =>
+  create: (clientId: number, data: Omit<Vehicle, 'id' | 'serviceRecords'>): Promise<Vehicle> =>
     http.post<VehicleResponse>('/api/vehicles/', {
       client_id: clientId,
       brand: data.make,
@@ -68,7 +64,7 @@ export const vehiclesApi = {
       mileage: data.mileage,
     }).then(v => mapVehicle(v)),
 
-  update: (id: string, data: Omit<Vehicle, 'id' | 'serviceRecords'>) =>
+  update: (id: string, data: Omit<Vehicle, 'id' | 'serviceRecords'>): Promise<Vehicle> =>
     http.put<VehicleResponse>(`/api/vehicles/${id}`, {
       brand: data.make,
       model: data.model,
@@ -77,6 +73,6 @@ export const vehiclesApi = {
       mileage: data.mileage,
     }).then(v => mapVehicle(v)),
 
-  remove: (id: string) =>
+  remove: (id: string): Promise<void> =>
     http.delete<void>(`/api/vehicles/${id}`),
 };

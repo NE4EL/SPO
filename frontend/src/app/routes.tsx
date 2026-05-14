@@ -6,6 +6,8 @@ import { VehiclesPage } from "./pages/VehiclesPage";
 import { PartsPage } from "./pages/PartsPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { UsersPage } from "./pages/UsersPage";
+import { AiPage } from "./pages/AiPage";
 import { redirect } from "react-router";
 import { getAuthUser } from "./auth/session";
 
@@ -31,6 +33,26 @@ export const router = createBrowserRouter([
       { path: "vehicles", Component: VehiclesPage },
       { path: "warehouse", Component: PartsPage },
       { path: "profile", Component: ProfilePage },
+      {
+        path: "users",
+        Component: UsersPage,
+        loader: () => {
+          const user = getAuthUser();
+          if (!user) return redirect("/login");
+          if (user.role !== "admin") return redirect("/");
+          return null;
+        },
+      },
+      {
+        path: "ai",
+        Component: AiPage,
+        loader: () => {
+          const user = getAuthUser();
+          if (!user) return redirect("/login");
+          if (user.role === "mechanic") return redirect("/");
+          return null;
+        },
+      },
     ],
   },
 ]);

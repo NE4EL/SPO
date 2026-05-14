@@ -11,6 +11,8 @@ import {
   AlertTriangle,
   Wrench,
   ChevronRight,
+  Users,
+  BrainCircuit,
 } from 'lucide-react';
 import { useLowStockNotifications } from '../../shared/hooks/useLowStockNotifications';
 import { getAuthUser } from '../auth/session';
@@ -27,6 +29,8 @@ export function Layout() {
     { path: '/orders', icon: ClipboardList, label: 'Заказы' },
     { path: '/vehicles', icon: Car, label: 'Автомобили' },
     { path: '/warehouse', icon: Package, label: 'Склад запчастей' },
+    ...(user?.role !== 'mechanic' ? [{ path: '/ai', icon: BrainCircuit, label: 'AI-анализ' }] : []),
+    ...(user?.role === 'admin' ? [{ path: '/users', icon: Users, label: 'Пользователи' }] : []),
   ];
 
   const initials = user

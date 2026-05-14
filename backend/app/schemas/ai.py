@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 
 # ─── Один результат предсказания ─────────────────────────────────────────────
@@ -50,13 +50,21 @@ class ReorderResponse(BaseModel):
 
 # ─── Обучение модели ─────────────────────────────────────────────────────────
 
+class ClassMetrics(BaseModel):
+    precision: float
+    recall:    float
+    f1_score:  float
+    support:   int
+
+
 class TrainResponse(BaseModel):
-    status:        str
-    samples_total: int
-    real_samples:  int
-    accuracy:      float    # точность на тестовой выборке, %
-    layers:        List[int]
-    iterations:    int
+    status:            str
+    samples_total:     int
+    real_samples:      int
+    accuracy:          float    # точность на тестовой выборке, %
+    layers:            List[int]
+    iterations:        int
+    metrics_by_class:  Optional[Dict[str, ClassMetrics]] = None
 
 
 # ─── Общий AI-чат (был раньше) ───────────────────────────────────────────────

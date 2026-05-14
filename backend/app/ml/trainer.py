@@ -94,14 +94,25 @@ def train(extra_X: np.ndarray | None = None,
     joblib.dump(model,  MODEL_PATH)
     joblib.dump(scaler, SCALER_PATH)
 
+    metrics_by_class = {
+        cls: {
+            "precision": round(report[cls]["precision"], 3),
+            "recall":    round(report[cls]["recall"],    3),
+            "f1_score":  round(report[cls]["f1-score"],  3),
+            "support":   int(report[cls]["support"]),
+        }
+        for cls in ("ok", "warning", "critical")
+        if cls in report
+    }
+
     return {
-        "status":        "trained",
-        "samples_total": len(X),
-        "real_samples":  len(extra_X) if extra_X is not None else 0,
-        "accuracy":      round(accuracy * 100, 2),
-        "layers":        list(MLP_CONFIG["hidden_layer_sizes"]),
-        "iterations":    model.n_iter_,
-        "report":        report,
+        "status":           "trained",
+        "samples_total":    len(X),
+        "real_samples":     len(extra_X) if extra_X is not None else 0,
+        "accuracy":         round(accuracy * 100, 2),
+        "layers":           list(MLP_CONFIG["hidden_layer_sizes"]),
+        "iterations":       model.n_iter_,
+        "metrics_by_class": metrics_by_class,
     }
 
 

@@ -1,7 +1,7 @@
 import { http } from './client';
 import type { Order, OrderStatus } from '../../app/context/AppContext';
+import type { VehicleResponse, ClientResponse } from './vehicles.api';
 
-// Статусы на бэкенде отличаются от фронта
 const STATUS_TO_BACKEND: Record<OrderStatus, string> = {
   'В ожидании': 'pending',
   'В работе':   'in_progress',
@@ -16,72 +16,96 @@ const STATUS_TO_FRONTEND: Record<string, OrderStatus> = {
   'cancelled':   'Отменён',
 };
 
-// Тип данных как приходит с бэкенда
 export interface WorkOrderResponse {
   id: number;
   order_number: string;
   vehicle_id: number;
   mechanic_id: number | null;
-  status: string;          // pending | in_progress | completed | cancelled
+  status: string;
   created_at: string;
   completed_at: string | null;
   total_cost: number;
-  notes: string | null;    // TODO: бэкенд хранит услуги в notes или отдельном поле?
+  notes: string | null;
 }
 
-// Маппинг бэкенд → фронт
-export function mapOrder(o: WorkOrderResponse): Order {
+export interface OrderPartResponse {
+  id: number;
+  work_order_id: number;
+  part_id: number;
+  quantity: number;
+  price_at_moment: number;
+}
+
+export function mapOrder(
+  o: WorkOrderResponse,
+  vehicle?: VehicleResponse,
+  client?: ClientResponse,
+): Order {
   return {
     id: String(o.id),
     orderNumber: o.order_number,
-    customer: '',           // TODO: получать из клиента через vehicle_id
-    phone: '',              // TODO: получать из клиента через vehicle_id
+    customer: client?.full_name ?? '',
+    phone: client?.phone ?? '',
     vehicleId: String(o.vehicle_id),
-    vehicle: '',            // TODO: получать из vehicle
-    licensePlate: '',       // TODO: получать из vehicle
-    services: o.notes ? o.notes.split(',').map(s => s.trim()) : [],
-    parts: [],              // TODO: получать из /api/work-orders/{id}/parts
+    vehicle: vehicle ? `${vehicle.brand} ${vehicle.model} ${vehicle.year}` : '',
+    licensePlate: vehicle?.plate_number ?? '',
+    services: o.notes ? o.notes.split(',').map(s => s.trim()).filter(Boolean) : [],
+    parts: [],
     status: STATUS_TO_FRONTEND[o.status] ?? 'В ожидании',
     createdDate: o.created_at.slice(0, 10),
     completedDate: o.completed_at?.slice(0, 10),
     totalAmount: o.total_cost,
-    laborCost: 0,           // TODO: уточнить у бэкенда поле laborCost
+    laborCost: 0,
     assignedTo: o.mechanic_id ? String(o.mechanic_id) : undefined,
   };
 }
 
-// GET    /api/work-orders/               → WorkOrderResponse[]
-// POST   /api/work-orders/               → WorkOrderResponse
-// PUT    /api/work-orders/{id}           → WorkOrderResponse  (обновление полей)
-// PUT    /api/work-orders/{id}           → WorkOrderResponse  (смена статуса через status поле)
-// POST   /api/work-orders/{id}/complete  → завершение заказа
-// DELETE /api/work-orders/{id}           → 204
 export const ordersApi = {
-  getAll: () =>
-    http.get<WorkOrderResponse[]>('/api/work-orders/').then(list => list.map(mapOrder)),
+  getAll: async (): Promise<Order[]> => {
+    const [orders, vehicles, clients] = await Promise.all([
+      http.get<WorkOrderResponse[]>('/api/work-orders/'),
+      http.get<VehicleResponse[]>('/api/vehicles/'),
+      http.get<ClientResponse[]>('/api/clients/'),
+    ]);
+    const clientMap = new Map(clients.map(c => [c.id, c]));
+    const vehicleMap = new Map(
+      vehicles.map(v => [v.id, { vehicle: v, client: clientMap.get(v.client_id) }])
+    );
+    return orders.map(o => {
+      const vc = vehicleMap.get(o.vehicle_id);
+      return mapOrder(o, vc?.vehicle, vc?.client);
+    });
+  },
 
-  create: (data: Omit<Order, 'id' | 'orderNumber'>) =>
+  create: (data: Omit<Order, 'id' | 'orderNumber'>): Promise<Order> =>
     http.post<WorkOrderResponse>('/api/work-orders/', {
-      vehicle_id: data.vehicleId ? Number(data.vehicleId) : null,
-      mechanic_id: data.assignedTo ? Number(data.assignedTo) : null,
+      vehicle_id: data.vehicleId ? Number(data.vehicleId) : undefined,
+      mechanic_id: null,
       notes: data.services.join(', '),
-    }).then(mapOrder),
+    }).then(o => mapOrder(o)),
 
-  update: (id: string, data: Partial<Pick<Order, 'services' | 'assignedTo'>>) =>
+  addPart: (orderId: string, partId: string, quantity: number, price: number): Promise<OrderPartResponse> =>
+    http.post<OrderPartResponse>(`/api/work-orders/${orderId}/parts`, {
+      part_id: Number(partId),
+      quantity,
+      price_at_moment: price,
+    }),
+
+  update: (id: string, data: Partial<Pick<Order, 'services' | 'assignedTo'>>): Promise<Order> =>
     http.put<WorkOrderResponse>(`/api/work-orders/${id}`, {
       notes: data.services?.join(', '),
-      mechanic_id: data.assignedTo ? Number(data.assignedTo) : undefined,
-    }).then(mapOrder),
+      mechanic_id: null,
+    }).then(o => mapOrder(o)),
 
-  updateStatus: (id: string, status: OrderStatus) => {
+  updateStatus: (id: string, status: OrderStatus): Promise<Order> => {
     if (status === 'Завершён') {
-      return http.post<WorkOrderResponse>(`/api/work-orders/${id}/complete`, {}).then(mapOrder);
+      return http.post<WorkOrderResponse>(`/api/work-orders/${id}/complete`, {}).then(o => mapOrder(o));
     }
     return http.put<WorkOrderResponse>(`/api/work-orders/${id}`, {
       status: STATUS_TO_BACKEND[status],
-    }).then(mapOrder);
+    }).then(o => mapOrder(o));
   },
 
-  remove: (id: string) =>
+  remove: (id: string): Promise<void> =>
     http.delete<void>(`/api/work-orders/${id}`),
 };
