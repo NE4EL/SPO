@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, Numeric, ForeignKey, Text
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from app.database import Base
 
 
@@ -12,7 +12,7 @@ class WorkOrder(Base):
     vehicle_id = Column(Integer, ForeignKey("vehicles.id", ondelete="CASCADE"), nullable=False, index=True)
     mechanic_id = Column(Integer, ForeignKey("employees.id", ondelete="SET NULL"), index=True)
     status = Column(String(20), default="pending", index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     completed_at = Column(DateTime, nullable=True)
     total_cost = Column(Numeric(10, 2), default=0)
     notes = Column(Text)
@@ -49,7 +49,7 @@ class WorkOrder(Base):
                 quantity=order_part.quantity,
                 work_order_id=self.id,
                 performed_by_id=self.mechanic_id,
-                operation_date=datetime.utcnow(),
+                operation_date=datetime.now(timezone.utc),
                 notes=f"Автосписание при завершении заказа {self.order_number}"
             )
             db.add(stock_op)
@@ -84,7 +84,7 @@ class WorkOrder(Base):
 
         # 4. Завершить заказ
         self.status = "completed"
-        self.completed_at = datetime.utcnow()
+        self.completed_at = datetime.now(timezone.utc)
 
         # Рассчитать итоговую стоимость
         self.total_cost = sum(op.price_at_moment * op.quantity for op in self.order_parts)
