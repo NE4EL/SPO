@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from decouple import config
@@ -6,13 +7,28 @@ from app.models import Base
 from app.api import clients, vehicles, work_orders, parts, stock_operations
 from app.api import auth, users, logs, ai
 
-# Создаём таблицы если их нет
-Base.metadata.create_all(bind=engine)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    from app.services.user_service import create_initial_admin
+    db = SessionLocal()
+    try:
+        admin_username = config("ADMIN_USERNAME", default="admin")
+        admin_password = config("ADMIN_PASSWORD", default="admin123")
+        admin_email = config("ADMIN_EMAIL", default="admin@sto.ru")
+        create_initial_admin(db, admin_username, admin_email, admin_password)
+        print(f"[INFO] Администратор '{admin_username}' готов к работе.")
+    finally:
+        db.close()
+    yield
+
 
 app = FastAPI(
     title="СТО API",
     version="2.0.0",
     description="Backend для системы управления автосервисом. Роли: admin / manager / mechanic.",
+    lifespan=lifespan,
 )
 
 # CORS (разрешаем все источники — для разработки)
@@ -35,20 +51,6 @@ app.include_router(work_orders.router, prefix="/api")
 app.include_router(parts.router, prefix="/api")
 app.include_router(stock_operations.router, prefix="/api")
 
-
-# ---------- Создание начального администратора ----------
-@app.on_event("startup")
-def create_default_admin():
-    from app.services.user_service import create_initial_admin
-    db = SessionLocal()
-    try:
-        admin_username = config("ADMIN_USERNAME", default="admin")
-        admin_password = config("ADMIN_PASSWORD", default="admin123")
-        admin_email = config("ADMIN_EMAIL", default="admin@sto.ru")
-        create_initial_admin(db, admin_username, admin_email, admin_password)
-        print(f"[INFO] Администратор '{admin_username}' готов к работе.")
-    finally:
-        db.close()
 
 
 @app.get("/")

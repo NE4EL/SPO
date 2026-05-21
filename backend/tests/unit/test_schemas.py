@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from app.schemas.warehouse import PartCreate, PartUpdate, StockOperationCreate
 from app.schemas.work_order import OrderPartCreate, WorkOrderResponse
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class TestPartCreate:
@@ -96,7 +96,7 @@ class TestWorkOrderResponse:
             vehicle_id=1,
             mechanic_id=None,
             status="pending",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             completed_at=None,
             total_cost=total_cost,
             notes=None,

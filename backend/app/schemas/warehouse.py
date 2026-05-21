@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 from datetime import datetime
 from typing import Optional
 
@@ -37,6 +37,8 @@ class PartUpdate(BaseModel):
 
 
 class PartResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     article: str
@@ -50,9 +52,6 @@ class PartResponse(BaseModel):
     def format_price(cls, v) -> float:
         return round(float(v), 2)
 
-    class Config:
-        from_attributes = True
-
 
 class StockOperationCreate(BaseModel):
     part_id: int
@@ -64,6 +63,8 @@ class StockOperationCreate(BaseModel):
 
 
 class StockOperationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     part_id: int
     operation_type: str
@@ -72,6 +73,3 @@ class StockOperationResponse(BaseModel):
     work_order_id: Optional[int]
     operation_date: datetime
     notes: Optional[str]
-
-    class Config:
-        from_attributes = True
