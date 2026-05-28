@@ -43,9 +43,6 @@ backups/
 .venv/
 venv/
 
-# Claude Code instructions (contains personal data)
-CLAUDE.md
-
 # Seed / test artifacts
 backend/seed_data.py
 backend/test_sto.db
