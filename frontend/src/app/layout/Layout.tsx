@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Users,
   BrainCircuit,
+  Shield,
 } from 'lucide-react';
 import { useLowStockNotifications } from '../../shared/hooks/useLowStockNotifications';
 import { getAuthUser } from '../auth/session';
@@ -31,6 +32,7 @@ export function Layout() {
     { path: '/warehouse', icon: Package, label: 'Склад запчастей' },
     ...(user?.role !== 'mechanic' ? [{ path: '/ai', icon: BrainCircuit, label: 'AI-анализ' }] : []),
     ...(user?.role === 'admin' ? [{ path: '/users', icon: Users, label: 'Пользователи' }] : []),
+    ...(user?.role === 'admin' ? [{ path: '/logs', icon: Shield, label: 'Журнал' }] : []),
   ];
 
   const initials = user

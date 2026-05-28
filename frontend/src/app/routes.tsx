@@ -8,6 +8,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { UsersPage } from "./pages/UsersPage";
 import { AiPage } from "./pages/AiPage";
+import { LogPage } from "./pages/LogPage";
 import { redirect } from "react-router";
 import { getAuthUser } from "./auth/session";
 
@@ -36,6 +37,16 @@ export const router = createBrowserRouter([
       {
         path: "users",
         Component: UsersPage,
+        loader: () => {
+          const user = getAuthUser();
+          if (!user) return redirect("/login");
+          if (user.role !== "admin") return redirect("/");
+          return null;
+        },
+      },
+      {
+        path: "logs",
+        Component: LogPage,
         loader: () => {
           const user = getAuthUser();
           if (!user) return redirect("/login");

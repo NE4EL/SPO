@@ -67,7 +67,7 @@ def client(reset_db):
     app.dependency_overrides.clear()
 
 
-# ── Вспомогательные фикстуры пользователей ───────────────────────────────────
+#  Вспомогательные фикстуры пользователей 
 
 def _create_user(db, username: str, role: str) -> User:
     user = User(
@@ -77,7 +77,7 @@ def _create_user(db, username: str, role: str) -> User:
         role=role,
     )
     db.add(user)
-    db.flush()  # получаем user.id не делая commit
+    db.flush()  
 
     employee = Employee(
         user_id=user.id,

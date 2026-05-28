@@ -1,5 +1,5 @@
 import json
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.models.audit_log import AuditLog
 
 
@@ -25,6 +25,7 @@ def write_log(
 def get_logs(db: Session, limit: int = 200, offset: int = 0):
     return (
         db.query(AuditLog)
+        .options(joinedload(AuditLog.user))
         .order_by(AuditLog.created_at.desc())
         .offset(offset)
         .limit(limit)
@@ -35,6 +36,7 @@ def get_logs(db: Session, limit: int = 200, offset: int = 0):
 def get_logs_by_user(db: Session, user_id: int, limit: int = 100):
     return (
         db.query(AuditLog)
+        .options(joinedload(AuditLog.user))
         .filter(AuditLog.user_id == user_id)
         .order_by(AuditLog.created_at.desc())
         .limit(limit)
